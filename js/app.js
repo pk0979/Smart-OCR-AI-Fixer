@@ -183,27 +183,26 @@ GHI CHÚ:
         if (!this.extractedText) return;
 
         try {
-            // Tách các dòng từ text
-            const lines = this.extractedText.split('\n').filter(line => line.trim());
+            // Check if required libraries are loaded
+            if (typeof JSZip === 'undefined') {
+                alert('Lỗi: Thư viện không tải được. Vui lòng tải lại trang.');
+                return;
+            }
+
+            // Tạo docx file bằng JSZip
+            const zip = new JSZip();
             
-            // Tạo các paragraph từ docx library
-            const paragraphs = lines.map(line => {
-                return new docx.Paragraph({
-                    text: line,
-                    style: "Normal"
-                });
-            });
+            // Tạo folder structure
+            zip.folder('_rels');
+            zip.folder('word').folder('_rels');
+            zip.folder('word').file('document.xml', this.createWordXML());
+            zip.folder('customXml');
+            zip.file('[Content_Types].xml', this.createContentTypesXML());
+            zip.folder('_rels').file('.rels', this.createRelsXML());
+            zip.folder('word/_rels').file('document.xml.rels', this.createDocumentRelsXML());
 
-            // Tạo document
-            const doc = new docx.Document({
-                sections: [{
-                    properties: {},
-                    children: paragraphs
-                }]
-            });
-
-            // Tải xuống file
-            docx.Packer.toBlob(doc).then(blob => {
+            // Generate file
+            zip.generateAsync({type : "blob"}).then((blob) => {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -212,14 +211,51 @@ GHI CHÚ:
                 a.click();
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
-            }).catch(err => {
-                console.error('Error creating DOCX:', err);
-                alert('Lỗi khi tạo file Word');
             });
         } catch (error) {
             console.error('Error downloading DOCX:', error);
             alert('Lỗi khi tải xuống: ' + error.message);
         }
+    }
+
+    createWordXML() {
+        const content = this.extractedText.split('\n').filter(line => line.trim()).map(line => {
+            return `<w:p><w:pPr><w:pStyle w:val="Normal"/></w:pPr><w:r><w:rPr><w:rStyle w:val="Normal"/></w:rPr><w:t>${this.escapeXml(line)}</w:t></w:r></w:p>`;
+        }).join('');
+
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>${content}<w:sectPr><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+    }
+
+    createContentTypesXML() {
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+    }
+
+    createRelsXML() {
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+    }
+
+    createDocumentRelsXML() {
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>`;
+    }
+
+    escapeXml(str) {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
     }
 
     reset() {
