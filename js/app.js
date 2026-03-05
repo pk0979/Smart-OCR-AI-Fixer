@@ -74,9 +74,10 @@ class SmartOCR {
         // Check if docx is already loaded
         if (typeof window.docx === 'undefined') {
             console.log('Waiting for docx library to load...');
-            setTimeout(() => this.preloadDocxLibrary(), 100);
+            setTimeout(() => this.preloadDocxLibrary(), 50);
         } else {
             console.log('%cdocx library loaded successfully', 'color: green;');
+            this.docxReady = true;
         }
     }
 
@@ -240,12 +241,29 @@ GHI CHÚ:
         try {
             // Kiểm tra xem library docx có sẵn không
             if (typeof window.docx === 'undefined') {
-                console.warn('docx library not loaded yet');
-                alert('Thư viện đang tải, vui lòng chờ một chút...');
-                // Wait longer for library to load
-                setTimeout(() => this.downloadDocx(), 2000);
+                console.warn('docx library not loaded yet, waiting...');
+                
+                // Track retry attempts
+                if (!this.docxRetryCount) {
+                    this.docxRetryCount = 0;
+                }
+                
+                this.docxRetryCount++;
+                
+                // Show alert only after 50 attempts (5 seconds)
+                if (this.docxRetryCount > 50) {
+                    alert('Lỗi: Thư viện docx không thể tải được. Vui lòng tải lại trang.');
+                    this.docxRetryCount = 0;
+                    return;
+                }
+                
+                // Silent retry every 100ms
+                setTimeout(() => this.downloadDocx(), 100);
                 return;
             }
+            
+            // Reset retry count on success
+            this.docxRetryCount = 0;
 
             console.log('Creating DOCX file...');
             const { Document, Packer, Paragraph } = window.docx;
@@ -271,14 +289,7 @@ GHI CHÚ:
             // Tải xuống file
             Packer.toBlob(doc).then(blob => {
                 console.log('DOCX blob created, downloading...');
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `${this.currentFile.name.replace('.pdf', '')}_extracted.docx`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
+                saveAs(blob, `${this.currentFile.name.replace('.pdf', '')}_extracted.docx`);
                 console.log('%cDOCX file downloaded successfully', 'color: green;');
             }).catch(err => {
                 console.error('Error creating DOCX blob:', err);
