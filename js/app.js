@@ -9,7 +9,6 @@ class SmartOCR {
         this.progressPercent = document.getElementById('progressPercent');
         this.resultText = document.getElementById('resultText');
         this.downloadBtn = document.getElementById('downloadTxt');
-        this.downloadDocxBtn = document.getElementById('downloadDocx');
         this.resetBtn = document.getElementById('resetBtn');
         this.startOcrBtn = document.getElementById('startOcrBtn');
         this.changeFileBtn = document.getElementById('changeFileBtn');
@@ -53,50 +52,17 @@ class SmartOCR {
             this.downloadText();
         });
         
-        this.downloadDocxBtn.addEventListener('click', () => {
-            console.log('Download DOCX clicked');
-            this.downloadDocx();
-        });
-        
         // Reset button
         this.resetBtn.addEventListener('click', () => {
             console.log('Reset clicked');
             this.reset();
         });
         
-        // Pre-load docx library
-        this.preloadDocxLibrary();
-        
-        // Check libraries after a delay to ensure they're loaded
-        setTimeout(() => {
-            this.checkLibraries();
-        }, 2000);
+
         
         console.log('%cSmartOCR initialized successfully', 'color: green; font-weight: bold;');
     }
 
-    checkLibraries() {
-        console.log('Library check:');
-        console.log('- saveAs available:', typeof saveAs !== 'undefined');
-        console.log('- docx available:', typeof window.docx !== 'undefined');
-        
-        if (typeof window.docx === 'undefined') {
-            console.warn('%cDocx library failed to load from CDN', 'color: red; font-weight: bold;');
-            this.downloadDocxBtn.disabled = true;
-            this.downloadDocxBtn.textContent = 'Tải Word (Không Khả Dụng)';
-            this.downloadDocxBtn.style.opacity = '0.5';
-            this.downloadDocxBtn.style.cursor = 'not-allowed';
-        }
-    }
-
-    preloadDocxLibrary() {
-        // Log the library status
-        if (typeof window.docx !== 'undefined') {
-            console.log('%cdocx library loaded successfully', 'color: green;');
-        } else {
-            console.log('%cWaiting for docx library...', 'color: orange;');
-        }
-    }
 
     handleFileSelect(event) {
         console.log('handleFileSelect called');
@@ -247,67 +213,6 @@ GHI CHÚ:
         element.click();
         document.body.removeChild(element);
         console.log('Text file downloaded');
-    }
-
-    downloadDocx() {
-        if (!this.extractedText) {
-            alert('Không có teks để download');
-            return;
-        }
-
-        // Use saveAs from FileSaver which should always be available
-        try {
-            // Make sure docx library is loaded
-            if (typeof window.docx !== 'undefined' && typeof window.docx.Document !== 'undefined') {
-                const { Document, Packer, Paragraph } = window.docx;
-
-                // Tách các dòng từ text
-                const lines = this.extractedText.split('\n').filter(line => line.trim());
-                
-                // Tạo các paragraph
-                const paragraphs = lines.map(line => {
-                    return new Paragraph({
-                        text: line,
-                        spacing: { line: 240, lineRule: "auto" }
-                    });
-                });
-
-                // Tạo document
-                const doc = new Document({
-                    sections: [{
-                        children: paragraphs
-                    }]
-                });
-
-                // Tải xuống file
-                Packer.toBlob(doc).then(blob => {
-                    console.log('DOCX blob created, downloading...');
-                    if (typeof saveAs === 'function') {
-                        saveAs(blob, `${this.currentFile.name.replace('.pdf', '')}_extracted.docx`);
-                    } else {
-                        // Fallback: manual download
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = `${this.currentFile.name.replace('.pdf', '')}_extracted.docx`;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        URL.revokeObjectURL(url);
-                    }
-                    console.log('%cDOCX file downloaded successfully', 'color: green;');
-                }).catch(err => {
-                    console.error('Error creating DOCX blob:', err);
-                    alert('Lỗi khi tạo file Word: ' + err.message);
-                });
-            } else {
-                console.error('docx library not available');
-                alert('Lỗi: Thư viện docx không được tải. Vui lòng tải lại trang và thử lại.');
-            }
-        } catch (error) {
-            console.error('Error downloading DOCX:', error);
-            alert('Lỗi: ' + error.message);
-        }
     }
 
     reset() {
