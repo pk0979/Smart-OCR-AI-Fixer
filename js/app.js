@@ -23,22 +23,15 @@ class SmartOCR {
     }
 
     init() {
-        // Direct change listener on file input
-        this.fileInput.addEventListener('change', (e) => {
-            console.log('File change event triggered');
-            this.handleFileSelect(e);
-        });
+        console.log('Initializing SmartOCR...');
         
-        // Click listener on wrapper div - allow selecting same file again
-        const wrapper = this.fileInput.closest('[class*="relative"]');
-        if (wrapper) {
-            wrapper.addEventListener('click', (e) => {
-                console.log('Wrapper clicked');
-                // Reset input value to allow selecting the same file again
-                this.fileInput.value = '';
-                setTimeout(() => this.fileInput.click(), 0);
-            });
-        }
+        // File input change event - this fires when user selects a file
+        this.fileInput.addEventListener('change', (e) => {
+            console.log('File change event triggered', e.target.files);
+            if (e.target.files && e.target.files.length > 0) {
+                this.handleFileSelect(e);
+            }
+        });
         
         // Start OCR button
         this.startOcrBtn.addEventListener('click', () => {
@@ -46,10 +39,12 @@ class SmartOCR {
             this.startProcessing();
         });
         
-        // Change file button
-        this.changeFileBtn.addEventListener('click', () => {
+        // Change file button - reset input and trigger click
+        this.changeFileBtn.addEventListener('click', (e) => {
             console.log('Change file clicked');
-            this.changeFile();
+            e.preventDefault();
+            this.fileInput.value = '';
+            this.fileInput.click();
         });
         
         // Download buttons
