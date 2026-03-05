@@ -29,12 +29,14 @@ class SmartOCR {
             this.handleFileSelect(e);
         });
         
-        // Click listener on wrapper div
+        // Click listener on wrapper div - allow selecting same file again
         const wrapper = this.fileInput.closest('[class*="relative"]');
         if (wrapper) {
             wrapper.addEventListener('click', (e) => {
                 console.log('Wrapper clicked');
-                this.fileInput.click();
+                // Reset input value to allow selecting the same file again
+                this.fileInput.value = '';
+                setTimeout(() => this.fileInput.click(), 0);
             });
         }
         
@@ -67,7 +69,20 @@ class SmartOCR {
             this.reset();
         });
         
+        // Pre-load docx library
+        this.preloadDocxLibrary();
+        
         console.log('%cSmartOCR initialized successfully', 'color: green; font-weight: bold;');
+    }
+
+    preloadDocxLibrary() {
+        // Check if docx is already loaded
+        if (typeof window.docx === 'undefined') {
+            console.log('Waiting for docx library to load...');
+            setTimeout(() => this.preloadDocxLibrary(), 100);
+        } else {
+            console.log('%cdocx library loaded successfully', 'color: green;');
+        }
     }
 
     handleFileSelect(event) {
@@ -223,15 +238,16 @@ GHI CHÚ:
 
     downloadDocx() {
         if (!this.extractedText) {
-            alert('Tidak ada teks untuk download');
+            alert('Không có teks để download');
             return;
         }
 
         try {
             // Kiểm tra xem library docx có sẵn không
             if (typeof window.docx === 'undefined') {
-                console.warn('docx library not loaded, retrying...');
-                alert('Thư viện đang tải, vui lòng chờ...');
+                console.warn('docx library not loaded yet');
+                alert('Thư viện đang tải, vui lòng chờ một chút...');
+                // Wait longer for library to load
                 setTimeout(() => this.downloadDocx(), 2000);
                 return;
             }
@@ -268,9 +284,9 @@ GHI CHÚ:
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
-                console.log('DOCX file downloaded');
+                console.log('%cDOCX file downloaded successfully', 'color: green;');
             }).catch(err => {
-                console.error('Error creating DOCX:', err);
+                console.error('Error creating DOCX blob:', err);
                 alert('Lỗi khi tạo file Word: ' + err.message);
             });
 
