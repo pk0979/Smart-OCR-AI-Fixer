@@ -17,7 +17,11 @@ class SmartOCR {
     }
 
     init() {
-        // File input change event
+        // File input change event - wrapper div click
+        const fileInputWrapper = this.fileInput.parentElement;
+        fileInputWrapper.addEventListener('click', () => this.fileInput.click());
+        
+        // File input file select
         this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
         
         // Download button
@@ -88,8 +92,7 @@ class SmartOCR {
     }
 
     generateSampleOCRText(fileName) {
-        return `
-=== SMART OCR & AI FIXER ===
+        return `=== SMART OCR & AI FIXER ===
 Tệp xử lý: ${fileName}
 Ngày xử lý: ${new Date().toLocaleString('vi-VN')}
 
@@ -112,15 +115,14 @@ GHI CHÚ:
 Ứng dụng này sử dụng công nghệ OCR hiện đại kết hợp AI 
 để cung cấp kết quả tốt nhất cho các tài liệu tiếng Việt.
 
---- HẾT NỘI DUNG ---
-        `;
+--- HẾT NỘI DUNG ---`;
     }
 
     downloadText() {
         if (!this.extractedText) return;
         
         const element = document.createElement('a');
-        const file = new Blob([this.extractedText], { type: 'text/plain' });
+        const file = new Blob([this.extractedText], { type: 'text/plain; charset=utf-8' });
         element.href = URL.createObjectURL(file);
         element.download = `${this.currentFile.name.replace('.pdf', '')}_extracted.txt`;
         document.body.appendChild(element);
@@ -142,5 +144,4 @@ GHI CHÚ:
 // Initialize application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     new SmartOCR();
-    console.log('Smart OCR & AI Fixer initialized');
 });
