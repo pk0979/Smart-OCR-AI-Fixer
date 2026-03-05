@@ -4,12 +4,17 @@ class SmartOCR {
         this.fileInput = document.getElementById('fileInput');
         this.progressSection = document.getElementById('progressSection');
         this.resultSection = document.getElementById('resultSection');
+        this.selectedFileSection = document.getElementById('selectedFileSection');
         this.progressBar = document.getElementById('progressBar');
         this.progressPercent = document.getElementById('progressPercent');
         this.resultText = document.getElementById('resultText');
         this.downloadBtn = document.getElementById('downloadTxt');
         this.downloadDocxBtn = document.getElementById('downloadDocx');
         this.resetBtn = document.getElementById('resetBtn');
+        this.startOcrBtn = document.getElementById('startOcrBtn');
+        this.changeFileBtn = document.getElementById('changeFileBtn');
+        this.selectedFileName = document.getElementById('selectedFileName');
+        this.selectedFileSize = document.getElementById('selectedFileSize');
         
         this.currentFile = null;
         this.extractedText = '';
@@ -24,6 +29,12 @@ class SmartOCR {
         
         // File input file select
         this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        
+        // Start OCR button
+        this.startOcrBtn.addEventListener('click', () => this.startProcessing());
+        
+        // Change file button
+        this.changeFileBtn.addEventListener('click', () => this.changeFile());
         
         // Download button
         this.downloadBtn.addEventListener('click', () => this.downloadText());
@@ -42,14 +53,48 @@ class SmartOCR {
         
         if (file.type !== 'application/pdf') {
             alert('Vui lòng chọn file PDF');
+            this.fileInput.value = '';
             return;
         }
         
         this.currentFile = file;
-        this.processPDF(file);
+        this.showSelectedFileInfo();
+    }
+
+    showSelectedFileInfo() {
+        // Hide progress and result sections
+        this.progressSection.classList.add('hidden');
+        this.resultSection.classList.add('hidden');
+        
+        // Show selected file info
+        this.selectedFileSection.classList.remove('hidden');
+        
+        // Update file info
+        this.selectedFileName.textContent = this.currentFile.name;
+        const sizeInKB = (this.currentFile.size / 1024).toFixed(2);
+        const sizeInMB = this.currentFile.size > 1024 * 1024 
+            ? (this.currentFile.size / (1024 * 1024)).toFixed(2) + ' MB'
+            : sizeInKB + ' KB';
+        this.selectedFileSize.textContent = `Kích thước: ${sizeInMB}`;
+    }
+
+    startProcessing() {
+        this.processPDF(this.currentFile);
+    }
+
+    changeFile() {
+        this.fileInput.value = '';
+        this.currentFile = null;
+        this.extractedText = '';
+        this.selectedFileSection.classList.add('hidden');
+        this.progressSection.classList.add('hidden');
+        this.resultSection.classList.add('hidden');
     }
 
     async processPDF(file) {
+        // Hide selected file section
+        this.selectedFileSection.classList.add('hidden');
+        
         // Show progress section
         this.progressSection.classList.remove('hidden');
         this.resultSection.classList.add('hidden');
@@ -181,6 +226,7 @@ GHI CHÚ:
         this.fileInput.value = '';
         this.currentFile = null;
         this.extractedText = '';
+        this.selectedFileSection.classList.add('hidden');
         this.progressSection.classList.add('hidden');
         this.resultSection.classList.add('hidden');
         this.progressBar.style.width = '0%';
