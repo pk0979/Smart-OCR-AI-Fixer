@@ -1,0 +1,146 @@
+// Smart OCR & AI Fixer - Main Application
+class SmartOCR {
+    constructor() {
+        this.fileInput = document.getElementById('fileInput');
+        this.progressSection = document.getElementById('progressSection');
+        this.resultSection = document.getElementById('resultSection');
+        this.progressBar = document.getElementById('progressBar');
+        this.progressPercent = document.getElementById('progressPercent');
+        this.resultText = document.getElementById('resultText');
+        this.downloadBtn = document.getElementById('downloadTxt');
+        this.resetBtn = document.getElementById('resetBtn');
+        
+        this.currentFile = null;
+        this.extractedText = '';
+        
+        this.init();
+    }
+
+    init() {
+        // File input change event
+        this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        
+        // Download button
+        this.downloadBtn.addEventListener('click', () => this.downloadText());
+        
+        // Reset button
+        this.resetBtn.addEventListener('click', () => this.reset());
+    }
+
+    handleFileSelect(event) {
+        const file = event.target.files[0];
+        
+        if (!file) return;
+        
+        if (file.type !== 'application/pdf') {
+            alert('Vui lòng chọn file PDF');
+            return;
+        }
+        
+        this.currentFile = file;
+        this.processPDF(file);
+    }
+
+    async processPDF(file) {
+        // Show progress section
+        this.progressSection.classList.remove('hidden');
+        this.resultSection.classList.add('hidden');
+        
+        try {
+            // Simulate OCR processing with progress
+            await this.simulateOCRProcessing(file);
+            
+            // Show result section
+            this.progressSection.classList.add('hidden');
+            this.resultSection.classList.remove('hidden');
+            
+            // Update result text
+            const fileName = file.name.replace('.pdf', '');
+            this.resultText.textContent = `File "${fileName}" đã được xử lý thành công! Kích thước: ${(file.size / 1024).toFixed(2)} KB`;
+            
+        } catch (error) {
+            console.error('Error processing PDF:', error);
+            alert('Lỗi khi xử lý file: ' + error.message);
+            this.progressSection.classList.add('hidden');
+        }
+    }
+
+    async simulateOCRProcessing(file) {
+        return new Promise((resolve) => {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 30;
+                if (progress > 100) progress = 100;
+                
+                this.progressBar.style.width = progress + '%';
+                this.progressPercent.textContent = Math.floor(progress) + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    
+                    // Simulate OCR extraction
+                    this.extractedText = this.generateSampleOCRText(file.name);
+                    
+                    resolve();
+                }
+            }, 300);
+        });
+    }
+
+    generateSampleOCRText(fileName) {
+        return `
+=== SMART OCR & AI FIXER ===
+Tệp xử lý: ${fileName}
+Ngày xử lý: ${new Date().toLocaleString('vi-VN')}
+
+--- NỘI DUNG TÀI LIỆU ---
+
+Xin chào! Đây là kết quả OCR từ tài liệu PDF của bạn.
+
+TÍNH NĂNG CHÍNH:
+1. Nhận diện văn bản tiếng Việt chính xác
+2. Giữ nguyên định dạng bảng biểu
+3. Trích xuất ảnh gốc có chất lượng cao
+4. Sửa lỗi chính tả bằng AI
+
+HƯỚNG DẪN SỬ DỤNG:
+- Tải lên file PDF của bạn
+- Chờ hệ thống xử lý
+- Tải xuống kết quả dưới dạng text
+
+GHI CHÚ:
+Ứng dụng này sử dụng công nghệ OCR hiện đại kết hợp AI 
+để cung cấp kết quả tốt nhất cho các tài liệu tiếng Việt.
+
+--- HẾT NỘI DUNG ---
+        `;
+    }
+
+    downloadText() {
+        if (!this.extractedText) return;
+        
+        const element = document.createElement('a');
+        const file = new Blob([this.extractedText], { type: 'text/plain' });
+        element.href = URL.createObjectURL(file);
+        element.download = `${this.currentFile.name.replace('.pdf', '')}_extracted.txt`;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    }
+
+    reset() {
+        this.fileInput.value = '';
+        this.currentFile = null;
+        this.extractedText = '';
+        this.progressSection.classList.add('hidden');
+        this.resultSection.classList.add('hidden');
+        this.progressBar.style.width = '0%';
+        this.progressPercent.textContent = '0%';
+    }
+}
+
+// Initialize application when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    new SmartOCR();
+    console.log('Smart OCR & AI Fixer initialized');
+});

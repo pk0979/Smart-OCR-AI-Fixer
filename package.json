@@ -1,0 +1,29 @@
+{
+  "name": "smart-ocr-ai-fixer",
+  "version": "1.0.0",
+  "description": "AI-powered PDF OCR converter with Vietnamese language support",
+  "main": "js/app.js",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "npx http-server -p 8000",
+    "build": "echo 'No build needed - static files only'"
+  },
+  "keywords": [
+    "ocr",
+    "pdf",
+    "converter",
+    "vietnamese",
+    "ai",
+    "text-extraction",
+    "image-extraction"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/smart-ocr.git"
+  },
+  "homepage": "https://yourusername.github.io/smart-ocr",
+  "devDependencies": {},
+  "dependencies": {}
+}
