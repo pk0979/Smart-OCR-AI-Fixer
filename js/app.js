@@ -8,6 +8,7 @@ class SmartOCR {
         this.progressPercent = document.getElementById('progressPercent');
         this.resultText = document.getElementById('resultText');
         this.downloadBtn = document.getElementById('downloadTxt');
+        this.downloadDocxBtn = document.getElementById('downloadDocx');
         this.resetBtn = document.getElementById('resetBtn');
         
         this.currentFile = null;
@@ -26,6 +27,9 @@ class SmartOCR {
         
         // Download button
         this.downloadBtn.addEventListener('click', () => this.downloadText());
+        
+        // Download Docx button
+        this.downloadDocxBtn.addEventListener('click', () => this.downloadDocx());
         
         // Reset button
         this.resetBtn.addEventListener('click', () => this.reset());
@@ -109,7 +113,7 @@ TÍNH NĂNG CHÍNH:
 HƯỚNG DẪN SỬ DỤNG:
 - Tải lên file PDF của bạn
 - Chờ hệ thống xử lý
-- Tải xuống kết quả dưới dạng text
+- Tải xuống kết quả dưới dạng text hoặc Word
 
 GHI CHÚ:
 Ứng dụng này sử dụng công nghệ OCR hiện đại kết hợp AI 
@@ -128,6 +132,49 @@ GHI CHÚ:
         document.body.appendChild(element);
         element.click();
         document.body.removeChild(element);
+    }
+
+    downloadDocx() {
+        if (!this.extractedText) return;
+
+        try {
+            // Tách các dòng từ text
+            const lines = this.extractedText.split('\n').filter(line => line.trim());
+            
+            // Tạo các paragraph từ docx library
+            const paragraphs = lines.map(line => {
+                return new docx.Paragraph({
+                    text: line,
+                    style: "Normal"
+                });
+            });
+
+            // Tạo document
+            const doc = new docx.Document({
+                sections: [{
+                    properties: {},
+                    children: paragraphs
+                }]
+            });
+
+            // Tải xuống file
+            docx.Packer.toBlob(doc).then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${this.currentFile.name.replace('.pdf', '')}_extracted.docx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }).catch(err => {
+                console.error('Error creating DOCX:', err);
+                alert('Lỗi khi tạo file Word');
+            });
+        } catch (error) {
+            console.error('Error downloading DOCX:', error);
+            alert('Lỗi khi tải xuống: ' + error.message);
+        }
     }
 
     reset() {
