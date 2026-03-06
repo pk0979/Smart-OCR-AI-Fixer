@@ -9,6 +9,7 @@ class SmartOCR {
         this.progressPercent = document.getElementById('progressPercent');
         this.resultText = document.getElementById('resultText');
         this.downloadBtn = document.getElementById('downloadTxt');
+        this.downloadDocxBtn = document.getElementById('downloadDocx');
         this.resetBtn = document.getElementById('resetBtn');
         this.startOcrBtn = document.getElementById('startOcrBtn');
         this.changeFileBtn = document.getElementById('changeFileBtn');
@@ -19,6 +20,49 @@ class SmartOCR {
         this.extractedText = '';
         
         this.init();
+    }
+
+    downloadDocx() {
+        if (!this.extractedText) {
+            alert('Không có teks để download');
+            return;
+        }
+
+        try {
+            if (typeof window.docx === 'undefined' || typeof window.docx.Document === 'undefined') {
+                console.error('docx library not available');
+                alert('Lỗi: Thư viện tạo Word chưa sẵn sàng. Vui lòng tải lại trang và thử lại.');
+                return;
+            }
+
+            const { Document, Packer, Paragraph } = window.docx;
+            const lines = this.extractedText.split('\n').filter(l => l.trim());
+            const paragraphs = lines.map(line => new Paragraph({ text: line }));
+            const doc = new Document({ sections: [{ children: paragraphs }] });
+
+            Packer.toBlob(doc).then(blob => {
+                if (typeof saveAs === 'function') {
+                    saveAs(blob, `${this.currentFile.name.replace('.pdf', '')}_extracted.docx`);
+                } else {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${this.currentFile.name.replace('.pdf', '')}_extracted.docx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+                console.log('DOCX downloaded');
+            }).catch(err => {
+                console.error('Error creating DOCX:', err);
+                alert('Lỗi khi tạo file Word: ' + err.message);
+            });
+
+        } catch (err) {
+            console.error('downloadDocx error:', err);
+            alert('Lỗi: ' + err.message);
+        }
     }
 
     init() {
@@ -50,6 +94,11 @@ class SmartOCR {
         this.downloadBtn.addEventListener('click', () => {
             console.log('Download TXT clicked');
             this.downloadText();
+        });
+
+        this.downloadDocxBtn.addEventListener('click', () => {
+            console.log('Download DOCX clicked');
+            this.downloadDocx();
         });
         
         // Reset button
