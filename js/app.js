@@ -22,6 +22,38 @@ class SmartOCR {
         this.init();
     }
 
+    loadScript(url) {
+        return new Promise((resolve, reject) => {
+            try {
+                const s = document.createElement('script');
+                s.src = url;
+                s.async = true;
+                s.onload = () => resolve();
+                s.onerror = (e) => reject(new Error('Failed to load ' + url));
+                document.head.appendChild(s);
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    async loadLibraries() {
+        // If saveAs already present, skip loading file-saver
+        const loaders = [];
+        if (typeof saveAs === 'undefined') {
+            loaders.push(this.loadScript('https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/file-saver.min.js'));
+        }
+        if (typeof window.docx === 'undefined') {
+            loaders.push(this.loadScript('https://cdn.jsdelivr.net/npm/docx@8.4.2/build/index.js'));
+        }
+
+        if (loaders.length === 0) return Promise.resolve();
+
+        // Wait for all to load, with a timeout fallback
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Library load timeout')), 10000));
+        return Promise.race([Promise.all(loaders), timeout]);
+    }
+
     downloadDocx() {
         if (!this.extractedText) {
             alert('Không có teks để download');
@@ -96,10 +128,30 @@ class SmartOCR {
             this.downloadText();
         });
 
+        // DOCX: disabled until libraries are loaded
+        this.downloadDocxBtn.disabled = true;
+        this.downloadDocxBtn.style.opacity = '0.5';
+        this.downloadDocxBtn.style.cursor = 'not-allowed';
         this.downloadDocxBtn.addEventListener('click', () => {
             console.log('Download DOCX clicked');
+            if (this.downloadDocxBtn.disabled) return;
             this.downloadDocx();
         });
+
+        // Start loading external libraries (file-saver & docx)
+        this.loadLibraries()
+            .then(() => {
+                console.log('External libraries loaded');
+                this.downloadDocxBtn.disabled = false;
+                this.downloadDocxBtn.style.opacity = '';
+                this.downloadDocxBtn.style.cursor = '';
+            })
+            .catch(err => {
+                console.error('Error loading external libraries:', err);
+                // keep button disabled and show tooltip text
+                this.downloadDocxBtn.disabled = true;
+                this.downloadDocxBtn.textContent = 'Tải Word (Không Khả Dụng)';
+            });
         
         // Reset button
         this.resetBtn.addEventListener('click', () => {
