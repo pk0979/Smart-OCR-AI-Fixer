@@ -308,58 +308,86 @@ GHI CHÚ:
         }
         
         try {
-            // Check if docx library is available
-            if (!window.Document || !window.Paragraph || !window.Packer) {
-                console.error('docx library not loaded completely');
-                alert('Lưu ý: Thư viện Word chưa tải xong. Vui lòng chờ và thử lại.');
+            if (!window.JSZip) {
+                alert('Lưu ý: Thư viện ZIP chưa tải. Vui lòng chờ và thử lại.');
                 return;
             }
             
             const fileName = this.currentFile.name.replace('.pdf', '');
-            const paragraphs = this.extractedText.split('\n').map(line => 
-                new window.Paragraph({
-                    text: line.trim() || ' ',
-                    spacing: { after: 100 }
-                })
-            );
             
-            const doc = new window.Document({
-                sections: [{
-                    properties: {},
-                    children: [
-                        new window.Paragraph({
-                            text: fileName,
-                            heading: window.HeadingLevel.heading1,
-                            spacing: { after: 200 }
-                        }),
-                        ...paragraphs
-                    ]
-                }]
-            });
+            // Create Word document structure
+            const docContent = this.createWordXML(this.extractedText, fileName);
             
-            window.Packer.toBlob(doc).then(blob => {
-                // Use FileSaver if available, otherwise fallback
-                if (window.saveAs) {
-                    window.saveAs(blob, `${fileName}_extracted.docx`);
-                } else {
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `${fileName}_extracted.docx`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url);
-                }
+            // Create ZIP file for DOCX
+            const zip = new window.JSZip();
+            
+            // Add [Content_Types].xml
+            zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`);
+            
+            // Add document.xml.rels
+            zip.folder('word').file('document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>`);
+            
+            // Add document.xml
+            zip.folder('word').file('document.xml', docContent);
+            
+            // Add _rels/.rels
+            zip.folder('_rels').file('.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+            
+            // Generate the DOCX file
+            zip.generateAsync({ type: 'blob' }).then(blob => {
+                window.saveAs(blob, `${fileName}_extracted.docx`);
                 console.log('Word document downloaded successfully');
             }).catch(err => {
                 console.error('Error creating DOCX:', err);
-                alert('Lỗi khi tạo file Word. Vui lòng thử lại.');
+                alert('Lỗi khi tạo file Word.');
             });
         } catch (error) {
             console.error('Error in downloadDocx:', error);
             alert('Lỗi: ' + error.message);
         }
+    }
+    
+    createWordXML(text, fileName) {
+        // Split text into paragraphs
+        const paragraphs = text.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .map(line => `<w:p><w:r><w:t>${this.escapeXml(line)}</w:t></w:r></w:p>`)
+            .join('');
+        
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+<w:p>
+<w:pPr>
+<w:pStyle w:val="Heading1"/>
+</w:pPr>
+<w:r>
+<w:t>${this.escapeXml(fileName)}</w:t>
+</w:r>
+</w:p>
+${paragraphs}
+</w:body>
+</w:document>`;
+    }
+    
+    escapeXml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&apos;");
     }
 
     reset() {
