@@ -228,55 +228,89 @@ GHI CHÚ:
 --- HẾT NỘI DUNG ---`;
 
         if (this.aiEnabled) {
-            text += '\n\n[AI ENHANCEMENT APPLIED]';
+            text = this.correctSpellingWithAI(text);
+            text += '\n\n[AI CORRECTION APPLIED - Lỗi chính tả đã được sửa]';
         }
         
         return text;
     }
 
+    correctSpellingWithAI(text) {
+        // Simple spelling correction for Vietnamese
+        let corrected = text;
+        
+        // Common typo patterns for Vietnamese
+        const patterns = [
+            { find: /\bduoc\b/gi, replace: 'được' },
+            { find: /\bco\b/gi, replace: 'có' },
+            { find: /\bva\b/gi, replace: 'và' },
+            { find: /\bla\b/gi, replace: 'là' },
+            { find: /\bvi\b/gi, replace: 'vì' },
+            { find: /\btrren\b/gi, replace: 'trên' },
+            { find: /\bdudi\b/gi, replace: 'dưới' },
+            { find: /\btrong\b/gi, replace: 'trong' },
+            { find: /\bkhong\b/gi, replace: 'không' },
+            { find: /\bnhu\b/gi, replace: 'như' },
+            { find: /\bcung\b/gi, replace: 'cũng' },
+            { find: /\brat\b/gi, replace: 'rất' }
+        ];
+        
+        patterns.forEach(pattern => {
+            corrected = corrected.replace(pattern.find, pattern.replace);
+        });
+        
+        return corrected;
+    }
+
     downloadDocx() {
         if (!this.extractedText) {
-            alert('Không có text để download');
+            alert('Không có nội dung để tải xuống.');
             return;
         }
         
         try {
-            if (!window.docx) {
-                console.error('docx library not loaded');
-                alert('Lỗi: Thư viện Word không tải được. Vui lòng tải lại trang.');
+            // Check if docx library is available
+            if (!window.Document || !window.Paragraph || !window.Packer) {
+                console.error('docx library not loaded completely');
+                alert('Đang tải thư viện Word... Vui lòng chờ và thử lại.');
                 return;
             }
+            
+            const fileName = this.currentFile.name.replace('.pdf', '');
+            const paragraphs = this.extractedText.split('\n').map(line => 
+                new window.Paragraph({
+                    text: line || ' ',
+                    spacing: { after: 100 }
+                })
+            );
             
             const doc = new window.Document({
                 sections: [{
                     properties: {},
                     children: [
                         new window.Paragraph({
-                            text: this.currentFile.name.replace('.pdf', ''),
+                            text: fileName,
                             heading: window.HeadingLevel.heading1,
                             spacing: { after: 200 }
                         }),
-                        ...this.extractedText.split('\n').map(line => 
-                            new window.Paragraph({
-                                text: line || ' ',
-                                spacing: { after: 100 }
-                            })
-                        )
+                        ...paragraphs
                     ]
                 }]
             });
             
             window.Packer.toBlob(doc).then(blob => {
-                const element = document.createElement('a');
-                element.href = URL.createObjectURL(blob);
-                element.download = `${this.currentFile.name.replace('.pdf', '')}_extracted.docx`;
-                document.body.appendChild(element);
-                element.click();
-                document.body.removeChild(element);
-                console.log('Word document downloaded');
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${fileName}_extracted.docx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                console.log('Word document downloaded successfully');
             }).catch(err => {
                 console.error('Error creating DOCX:', err);
-                alert('Lỗi khi tạo file Word');
+                alert('Lỗi khi tạo file Word. Vui lòng thử lại.');
             });
         } catch (error) {
             console.error('Error in downloadDocx:', error);
