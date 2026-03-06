@@ -92,14 +92,17 @@ class SmartOCR {
 
     async loadLibraries() {
         const loaders = [];
-        if (typeof saveAs === 'undefined') {
+        if (typeof window.saveAs === 'undefined') {
             loaders.push(this.loadScript('https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/file-saver.min.js'));
         }
-        if (typeof window.docx === 'undefined') {
-            loaders.push(this.loadScript('https://cdn.jsdelivr.net/npm/docx@8.4.2/build/index.js'));
+        if (typeof window.JSZip === 'undefined') {
+            loaders.push(this.loadScript('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'));
+        }
+        if (typeof window.pdfjsLib === 'undefined') {
+            loaders.push(this.loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'));
         }
         if (loaders.length === 0) return Promise.resolve();
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Library load timeout')), 10000));
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Library load timeout')), 15000));
         return Promise.race([Promise.all(loaders), timeout]);
     }
 
@@ -307,13 +310,25 @@ GHI CHÚ:
             return;
         }
         
+        console.log('downloadDocx called');
+        console.log('JSZip available:', typeof window.JSZip);
+        console.log('saveAs available:', typeof window.saveAs);
+        
         try {
             if (!window.JSZip) {
-                alert('Lưu ý: Thư viện ZIP chưa tải. Vui lòng chờ và thử lại.');
+                console.error('JSZip not available');
+                alert('Thư viện đang tải. Vui lòng chờ 2-3 giây và thử lại.');
+                return;
+            }
+            
+            if (!window.saveAs) {
+                console.error('saveAs not available');
+                alert('Thư viện FileSaver đang tải. Vui lòng chờ 2-3 giây và thử lại.');
                 return;
             }
             
             const fileName = this.currentFile.name.replace('.pdf', '');
+            console.log('Creating DOCX for:', fileName);
             
             // Create Word document structure
             const docContent = this.createWordXML(this.extractedText, fileName);
@@ -343,13 +358,16 @@ GHI CHÚ:
 <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
 </Relationships>`);
             
+            console.log('Generating DOCX blob...');
             // Generate the DOCX file
             zip.generateAsync({ type: 'blob' }).then(blob => {
+                console.log('DOCX blob created, size:', blob.size);
                 window.saveAs(blob, `${fileName}_extracted.docx`);
                 console.log('Word document downloaded successfully');
+                alert('✅ Tải Word thành công!');
             }).catch(err => {
-                console.error('Error creating DOCX:', err);
-                alert('Lỗi khi tạo file Word.');
+                console.error('Error creating DOCX blob:', err);
+                alert('Lỗi khi tạo file Word: ' + err.message);
             });
         } catch (error) {
             console.error('Error in downloadDocx:', error);
