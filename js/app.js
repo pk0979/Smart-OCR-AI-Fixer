@@ -8,6 +8,7 @@ class SmartOCR {
         this.progressBar = document.getElementById('progressBar');
         this.progressPercent = document.getElementById('progressPercent');
         this.resultText = document.getElementById('resultText');
+        this.downloadDocxBtn = document.getElementById('downloadDocx');
         this.resetBtn = document.getElementById('resetBtn');
         this.startOcrBtn = document.getElementById('startOcrBtn');
         this.changeFileBtn = document.getElementById('changeFileBtn');
@@ -52,6 +53,12 @@ class SmartOCR {
             e.preventDefault();
             this.fileInput.value = '';
             this.fileInput.click();
+        });
+        
+        // Download DOCX button
+        this.downloadDocxBtn.addEventListener('click', () => {
+            console.log('Download DOCX clicked');
+            this.downloadDocx();
         });
         
         // Reset button
@@ -225,6 +232,56 @@ GHI CHÚ:
         }
         
         return text;
+    }
+
+    downloadDocx() {
+        if (!this.extractedText) {
+            alert('Không có text để download');
+            return;
+        }
+        
+        try {
+            if (!window.docx) {
+                console.error('docx library not loaded');
+                alert('Lỗi: Thư viện Word không tải được. Vui lòng tải lại trang.');
+                return;
+            }
+            
+            const doc = new window.Document({
+                sections: [{
+                    properties: {},
+                    children: [
+                        new window.Paragraph({
+                            text: this.currentFile.name.replace('.pdf', ''),
+                            heading: window.HeadingLevel.heading1,
+                            spacing: { after: 200 }
+                        }),
+                        ...this.extractedText.split('\n').map(line => 
+                            new window.Paragraph({
+                                text: line || ' ',
+                                spacing: { after: 100 }
+                            })
+                        )
+                    ]
+                }]
+            });
+            
+            window.Packer.toBlob(doc).then(blob => {
+                const element = document.createElement('a');
+                element.href = URL.createObjectURL(blob);
+                element.download = `${this.currentFile.name.replace('.pdf', '')}_extracted.docx`;
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+                console.log('Word document downloaded');
+            }).catch(err => {
+                console.error('Error creating DOCX:', err);
+                alert('Lỗi khi tạo file Word');
+            });
+        } catch (error) {
+            console.error('Error in downloadDocx:', error);
+            alert('Lỗi: ' + error.message);
+        }
     }
 
     reset() {
