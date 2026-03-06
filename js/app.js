@@ -166,13 +166,18 @@ class SmartOCR {
         this.resultSection.classList.add('hidden');
         
         try {
-            await this.simulateOCRProcessing(file);
+            // Set PDF.js worker
+            if (window.pdfjsLib) {
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+            }
+            
+            await this.extractTextFromPDF(file);
             
             this.progressSection.classList.add('hidden');
             this.resultSection.classList.remove('hidden');
             
             const fileName = file.name.replace('.pdf', '');
-            this.resultText.textContent = `File "${fileName}" đã được xử lý thành công! Kích thước: ${(file.size / 1024).toFixed(2)} KB` + (this.aiEnabled ? ' (AI Sửa lỗi kích hoạt)' : '');
+            this.resultText.textContent = `File "${fileName}" đã được chuyển đổi thành công! Kích thước: ${(file.size / 1024).toFixed(2)} KB` + (this.aiEnabled ? ' (AI Sửa lỗi kích hoạt)' : '');
             
         } catch (error) {
             console.error('Error processing PDF:', error);
@@ -181,6 +186,40 @@ class SmartOCR {
         }
     }
 
+    async extractTextFromPDF(file) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                
+                let fullText = '';
+                let processedPages = 0;
+                
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + '\n';
+                    
+                    processedPages++;
+                    const progress = (processedPages / pdf.numPages) * 100;
+                    this.progressBar.style.width = progress + '%';
+                    this.progressPercent.textContent = Math.floor(progress) + '%';
+                }
+                
+                // Apply AI correction if enabled
+                this.extractedText = this.aiEnabled ? this.correctSpellingWithAI(fullText) : fullText;
+                
+                console.log('PDF text extracted successfully');
+                resolve();
+            } catch (error) {
+                console.error('Error extracting PDF:', error);
+                reject(error);
+            }
+        });
+    }
+
+    // Simulated OCR (deprecated - using real PDF extraction now)
     async simulateOCRProcessing(file) {
         return new Promise((resolve) => {
             let progress = 0;
@@ -272,14 +311,14 @@ GHI CHÚ:
             // Check if docx library is available
             if (!window.Document || !window.Paragraph || !window.Packer) {
                 console.error('docx library not loaded completely');
-                alert('Đang tải thư viện Word... Vui lòng chờ và thử lại.');
+                alert('Lưu ý: Thư viện Word chưa tải xong. Vui lòng chờ và thử lại.');
                 return;
             }
             
             const fileName = this.currentFile.name.replace('.pdf', '');
             const paragraphs = this.extractedText.split('\n').map(line => 
                 new window.Paragraph({
-                    text: line || ' ',
+                    text: line.trim() || ' ',
                     spacing: { after: 100 }
                 })
             );
@@ -299,14 +338,19 @@ GHI CHÚ:
             });
             
             window.Packer.toBlob(doc).then(blob => {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `${fileName}_extracted.docx`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
+                // Use FileSaver if available, otherwise fallback
+                if (window.saveAs) {
+                    window.saveAs(blob, `${fileName}_extracted.docx`);
+                } else {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `${fileName}_extracted.docx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }
                 console.log('Word document downloaded successfully');
             }).catch(err => {
                 console.error('Error creating DOCX:', err);
