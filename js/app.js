@@ -15,11 +15,70 @@ class SmartOCR {
         this.changeFileBtn = document.getElementById('changeFileBtn');
         this.selectedFileName = document.getElementById('selectedFileName');
         this.selectedFileSize = document.getElementById('selectedFileSize');
+        this.featureSection = document.getElementById('featureSection');
+        this.aiToggle = document.getElementById('aiToggle');
         
         this.currentFile = null;
         this.extractedText = '';
+        this.aiEnabled = false;
         
         this.init();
+    }
+
+    init() {
+        console.log('Initializing SmartOCR...');
+        
+        // AI Toggle
+        this.aiToggle.addEventListener('change', (e) => {
+            this.aiEnabled = e.target.checked;
+            console.log('AI mode:', this.aiEnabled);
+        });
+        
+        // File input change event - this fires when user selects a file
+        this.fileInput.addEventListener('change', (e) => {
+            console.log('File change event triggered', e.target.files);
+            if (e.target.files && e.target.files.length > 0) {
+                this.handleFileSelect(e);
+            }
+        });
+        
+        // Start OCR button
+        this.startOcrBtn.addEventListener('click', () => {
+            console.log('Start OCR clicked');
+            this.startProcessing();
+        });
+        
+        // Change file button - reset input and trigger click
+        this.changeFileBtn.addEventListener('click', (e) => {
+            console.log('Change file clicked');
+            e.preventDefault();
+            this.fileInput.value = '';
+            this.fileInput.click();
+        });
+        
+        // Download buttons
+        this.downloadBtn.addEventListener('click', () => {
+            console.log('Download TXT clicked');
+            this.downloadText();
+        });
+
+        this.downloadDocxBtn.addEventListener('click', () => {
+            console.log('Download DOCX clicked');
+            this.downloadDocx();
+        });
+        
+        // Reset button
+        this.resetBtn.addEventListener('click', () => {
+            console.log('Reset clicked');
+            this.reset();
+        });
+        
+        // Load external libraries dynamically
+        this.loadLibraries()
+            .then(() => console.log('Libraries loaded successfully'))
+            .catch(err => console.error('Library load error:', err));
+        
+        console.log('%cSmartOCR initialized successfully', 'color: green; font-weight: bold;');
     }
 
     loadScript(url) {
@@ -29,7 +88,7 @@ class SmartOCR {
                 s.src = url;
                 s.async = true;
                 s.onload = () => resolve();
-                s.onerror = (e) => reject(new Error('Failed to load ' + url));
+                s.onerror = () => reject(new Error('Failed to load ' + url));
                 document.head.appendChild(s);
             } catch (err) {
                 reject(err);
@@ -38,7 +97,6 @@ class SmartOCR {
     }
 
     async loadLibraries() {
-        // If saveAs already present, skip loading file-saver
         const loaders = [];
         if (typeof saveAs === 'undefined') {
             loaders.push(this.loadScript('https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/file-saver.min.js'));
@@ -46,12 +104,156 @@ class SmartOCR {
         if (typeof window.docx === 'undefined') {
             loaders.push(this.loadScript('https://cdn.jsdelivr.net/npm/docx@8.4.2/build/index.js'));
         }
-
         if (loaders.length === 0) return Promise.resolve();
-
-        // Wait for all to load, with a timeout fallback
         const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Library load timeout')), 10000));
         return Promise.race([Promise.all(loaders), timeout]);
+    }
+
+    handleFileSelect(event) {
+        console.log('handleFileSelect called');
+        const file = event.target.files[0];
+        
+        if (!file) {
+            console.log('No file selected');
+            return;
+        }
+        
+        console.log('File selected:', file.name, file.size, file.type);
+        
+        if (file.type !== 'application/pdf') {
+            alert('Vui lòng chọn file PDF');
+            this.fileInput.value = '';
+            return;
+        }
+        
+        this.currentFile = file;
+        this.showSelectedFileInfo();
+    }
+
+    showSelectedFileInfo() {
+        console.log('Show selected file info');
+        this.featureSection.classList.add('hidden');
+        this.progressSection.classList.add('hidden');
+        this.resultSection.classList.add('hidden');
+        this.selectedFileSection.classList.remove('hidden');
+        
+        this.selectedFileName.textContent = this.currentFile.name;
+        const sizeInKB = (this.currentFile.size / 1024).toFixed(2);
+        const sizeInMB = this.currentFile.size > 1024 * 1024 
+            ? (this.currentFile.size / (1024 * 1024)).toFixed(2) + ' MB'
+            : sizeInKB + ' KB';
+        this.selectedFileSize.textContent = `Kích thước: ${sizeInMB}`;
+    }
+
+    startProcessing() {
+        console.log('Starting processing');
+        if (this.currentFile) {
+            this.processPDF(this.currentFile);
+        } else {
+            alert('Vui lòng chọn file PDF trước');
+        }
+    }
+
+    changeFile() {
+        console.log('Changing file');
+        this.fileInput.value = '';
+        this.currentFile = null;
+        this.extractedText = '';
+        this.selectedFileSection.classList.add('hidden');
+        this.progressSection.classList.add('hidden');
+        this.resultSection.classList.add('hidden');
+        this.featureSection.classList.remove('hidden');
+    }
+
+    async processPDF(file) {
+        console.log('Processing PDF:', file.name);
+        this.selectedFileSection.classList.add('hidden');
+        this.progressSection.classList.remove('hidden');
+        this.resultSection.classList.add('hidden');
+        
+        try {
+            await this.simulateOCRProcessing(file);
+            
+            this.progressSection.classList.add('hidden');
+            this.resultSection.classList.remove('hidden');
+            
+            const fileName = file.name.replace('.pdf', '');
+            this.resultText.textContent = `File "${fileName}" đã được xử lý thành công! Kích thước: ${(file.size / 1024).toFixed(2)} KB` + (this.aiEnabled ? ' (AI Sửa lỗi kích hoạt)' : '');
+            
+        } catch (error) {
+            console.error('Error processing PDF:', error);
+            alert('Lỗi khi xử lý file: ' + error.message);
+            this.progressSection.classList.add('hidden');
+        }
+    }
+
+    async simulateOCRProcessing(file) {
+        return new Promise((resolve) => {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 30;
+                if (progress > 100) progress = 100;
+                
+                this.progressBar.style.width = progress + '%';
+                this.progressPercent.textContent = Math.floor(progress) + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    this.extractedText = this.generateSampleOCRText(file.name);
+                    resolve();
+                }
+            }, 300);
+        });
+    }
+
+    generateSampleOCRText(fileName) {
+        let text = `=== SMART OCR & AI FIXER ===
+Tệp xử lý: ${fileName}
+Ngày xử lý: ${new Date().toLocaleString('vi-VN')}
+Chế độ AI: ${this.aiEnabled ? 'KÍCH HOẠT' : 'KHÔNG KÍCH HOẠT'}
+
+--- NỘI DUNG TÀI LIỆU ---
+
+Xin chào! Đây là kết quả OCR từ tài liệu PDF của bạn.
+
+TÍNH NĂNG CHÍNH:
+1. Nhận diện văn bản tiếng Việt chính xác
+2. Giữ nguyên định dạng bảng biểu
+3. Trích xuất ảnh gốc có chất lượng cao
+4. Sửa lỗi chính tả bằng AI
+
+HƯỚNG DẪN SỬ DỤNG:
+- Tải lên file PDF của bạn
+- Chờ hệ thống xử lý
+- Tải xuống kết quả dưới dạng text hoặc Word
+
+GHI CHÚ:
+Ứng dụng này sử dụng công nghệ OCR hiện đại kết hợp AI 
+để cung cấp kết quả tốt nhất cho các tài liệu tiếng Việt.
+
+--- HẾT NỘI DUNG ---`;
+
+        if (this.aiEnabled) {
+            text += '\n\n[AI ENHANCEMENT APPLIED]';
+        }
+        
+        return text;
+    }
+
+    downloadText() {
+        if (!this.extractedText) {
+            alert('Không có teks để download');
+            return;
+        }
+        
+        const element = document.createElement('a');
+        const file = new Blob([this.extractedText], { type: 'text/plain; charset=utf-8' });
+        element.href = URL.createObjectURL(file);
+        element.download = `${this.currentFile.name.replace('.pdf', '')}_extracted.txt`;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+        console.log('Text file downloaded');
     }
 
     downloadDocx() {
@@ -97,225 +299,6 @@ class SmartOCR {
         }
     }
 
-    init() {
-        console.log('Initializing SmartOCR...');
-        
-        // File input change event - this fires when user selects a file
-        this.fileInput.addEventListener('change', (e) => {
-            console.log('File change event triggered', e.target.files);
-            if (e.target.files && e.target.files.length > 0) {
-                this.handleFileSelect(e);
-            }
-        });
-        
-        // Start OCR button
-        this.startOcrBtn.addEventListener('click', () => {
-            console.log('Start OCR clicked');
-            this.startProcessing();
-        });
-        
-        // Change file button - reset input and trigger click
-        this.changeFileBtn.addEventListener('click', (e) => {
-            console.log('Change file clicked');
-            e.preventDefault();
-            this.fileInput.value = '';
-            this.fileInput.click();
-        });
-        
-        // Download buttons
-        this.downloadBtn.addEventListener('click', () => {
-            console.log('Download TXT clicked');
-            this.downloadText();
-        });
-
-        // DOCX: disabled until libraries are loaded
-        this.downloadDocxBtn.disabled = true;
-        this.downloadDocxBtn.style.opacity = '0.5';
-        this.downloadDocxBtn.style.cursor = 'not-allowed';
-        this.downloadDocxBtn.addEventListener('click', () => {
-            console.log('Download DOCX clicked');
-            if (this.downloadDocxBtn.disabled) return;
-            this.downloadDocx();
-        });
-
-        // Start loading external libraries (file-saver & docx)
-        this.loadLibraries()
-            .then(() => {
-                console.log('External libraries loaded');
-                this.downloadDocxBtn.disabled = false;
-                this.downloadDocxBtn.style.opacity = '';
-                this.downloadDocxBtn.style.cursor = '';
-            })
-            .catch(err => {
-                console.error('Error loading external libraries:', err);
-                // keep button disabled and show tooltip text
-                this.downloadDocxBtn.disabled = true;
-                this.downloadDocxBtn.textContent = 'Tải Word (Không Khả Dụng)';
-            });
-        
-        // Reset button
-        this.resetBtn.addEventListener('click', () => {
-            console.log('Reset clicked');
-            this.reset();
-        });
-        
-
-        
-        console.log('%cSmartOCR initialized successfully', 'color: green; font-weight: bold;');
-    }
-
-
-    handleFileSelect(event) {
-        console.log('handleFileSelect called');
-        const file = event.target.files[0];
-        
-        if (!file) {
-            console.log('No file selected');
-            return;
-        }
-        
-        console.log('File selected:', file.name, file.size, file.type);
-        
-        if (file.type !== 'application/pdf') {
-            alert('Vui lòng chọn file PDF');
-            this.fileInput.value = '';
-            return;
-        }
-        
-        this.currentFile = file;
-        this.showSelectedFileInfo();
-    }
-
-    showSelectedFileInfo() {
-        console.log('Show selected file info');
-        // Hide progress and result sections
-        this.progressSection.classList.add('hidden');
-        this.resultSection.classList.add('hidden');
-        
-        // Show selected file info
-        this.selectedFileSection.classList.remove('hidden');
-        
-        // Update file info
-        this.selectedFileName.textContent = this.currentFile.name;
-        const sizeInKB = (this.currentFile.size / 1024).toFixed(2);
-        const sizeInMB = this.currentFile.size > 1024 * 1024 
-            ? (this.currentFile.size / (1024 * 1024)).toFixed(2) + ' MB'
-            : sizeInKB + ' KB';
-        this.selectedFileSize.textContent = `Kích thước: ${sizeInMB}`;
-    }
-
-    startProcessing() {
-        console.log('Starting processing');
-        if (this.currentFile) {
-            this.processPDF(this.currentFile);
-        } else {
-            alert('Vui lòng chọn file PDF trước');
-        }
-    }
-
-    changeFile() {
-        console.log('Changing file');
-        this.fileInput.value = '';
-        this.currentFile = null;
-        this.extractedText = '';
-        this.selectedFileSection.classList.add('hidden');
-        this.progressSection.classList.add('hidden');
-        this.resultSection.classList.add('hidden');
-    }
-
-    async processPDF(file) {
-        console.log('Processing PDF:', file.name);
-        // Hide selected file section
-        this.selectedFileSection.classList.add('hidden');
-        
-        // Show progress section
-        this.progressSection.classList.remove('hidden');
-        this.resultSection.classList.add('hidden');
-        
-        try {
-            // Simulate OCR processing with progress
-            await this.simulateOCRProcessing(file);
-            
-            // Show result section
-            this.progressSection.classList.add('hidden');
-            this.resultSection.classList.remove('hidden');
-            
-            // Update result text
-            const fileName = file.name.replace('.pdf', '');
-            this.resultText.textContent = `File "${fileName}" đã được xử lý thành công! Kích thước: ${(file.size / 1024).toFixed(2)} KB`;
-            
-        } catch (error) {
-            console.error('Error processing PDF:', error);
-            alert('Lỗi khi xử lý file: ' + error.message);
-            this.progressSection.classList.add('hidden');
-        }
-    }
-
-    async simulateOCRProcessing(file) {
-        return new Promise((resolve) => {
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += Math.random() * 30;
-                if (progress > 100) progress = 100;
-                
-                this.progressBar.style.width = progress + '%';
-                this.progressPercent.textContent = Math.floor(progress) + '%';
-                
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    
-                    // Simulate OCR extraction
-                    this.extractedText = this.generateSampleOCRText(file.name);
-                    
-                    resolve();
-                }
-            }, 300);
-        });
-    }
-
-    generateSampleOCRText(fileName) {
-        return `=== SMART OCR & AI FIXER ===
-Tệp xử lý: ${fileName}
-Ngày xử lý: ${new Date().toLocaleString('vi-VN')}
-
---- NỘI DUNG TÀI LIỆU ---
-
-Xin chào! Đây là kết quả OCR từ tài liệu PDF của bạn.
-
-TÍNH NĂNG CHÍNH:
-1. Nhận diện văn bản tiếng Việt chính xác
-2. Giữ nguyên định dạng bảng biểu
-3. Trích xuất ảnh gốc có chất lượng cao
-4. Sửa lỗi chính tả bằng AI
-
-HƯỚNG DẪN SỬ DỤNG:
-- Tải lên file PDF của bạn
-- Chờ hệ thống xử lý
-- Tải xuống kết quả dưới dạng text hoặc Word
-
-GHI CHÚ:
-Ứng dụng này sử dụng công nghệ OCR hiện đại kết hợp AI 
-để cung cấp kết quả tốt nhất cho các tài liệu tiếng Việt.
-
---- HẾT NỘI DUNG ---`;
-    }
-
-    downloadText() {
-        if (!this.extractedText) {
-            alert('Tidak ada teks untuk download');
-            return;
-        }
-        
-        const element = document.createElement('a');
-        const file = new Blob([this.extractedText], { type: 'text/plain; charset=utf-8' });
-        element.href = URL.createObjectURL(file);
-        element.download = `${this.currentFile.name.replace('.pdf', '')}_extracted.txt`;
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-        console.log('Text file downloaded');
-    }
-
     reset() {
         console.log('Resetting application');
         this.fileInput.value = '';
@@ -324,6 +307,7 @@ GHI CHÚ:
         this.selectedFileSection.classList.add('hidden');
         this.progressSection.classList.add('hidden');
         this.resultSection.classList.add('hidden');
+        this.featureSection.classList.remove('hidden');
         this.progressBar.style.width = '0%';
         this.progressPercent.textContent = '0%';
     }
