@@ -8,7 +8,6 @@ class SmartOCR {
         this.progressBar = document.getElementById('progressBar');
         this.progressPercent = document.getElementById('progressPercent');
         this.resultText = document.getElementById('resultText');
-        this.downloadBtn = document.getElementById('downloadTxt');
         this.downloadDocxBtn = document.getElementById('downloadDocx');
         this.resetBtn = document.getElementById('resetBtn');
         this.startOcrBtn = document.getElementById('startOcrBtn');
@@ -56,12 +55,7 @@ class SmartOCR {
             this.fileInput.click();
         });
         
-        // Download buttons
-        this.downloadBtn.addEventListener('click', () => {
-            console.log('Download TXT clicked');
-            this.downloadText();
-        });
-
+        // Download button
         this.downloadDocxBtn.addEventListener('click', () => {
             console.log('Download DOCX clicked');
             this.downloadDocx();
@@ -238,22 +232,6 @@ GHI CHÚ:
         }
         
         return text;
-    }
-
-    downloadText() {
-        if (!this.extractedText) {
-            alert('Không có teks để download');
-            return;
-        }
-        
-        const element = document.createElement('a');
-        const file = new Blob([this.extractedText], { type: 'text/plain; charset=utf-8' });
-        element.href = URL.createObjectURL(file);
-        element.download = `${this.currentFile.name.replace('.pdf', '')}_extracted.txt`;
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-        console.log('Text file downloaded');
     }
 
     downloadDocx() {
